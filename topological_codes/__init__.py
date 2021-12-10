@@ -18,6 +18,7 @@ Error correction benchmarking module
 """
 
 from .circuits import RepetitionCode
+from .circuits import SurfaceCode
 from .fitters import GraphDecoder
 from .fitters import lookuptable_decoding
 from .fitters import postselection_decoding
