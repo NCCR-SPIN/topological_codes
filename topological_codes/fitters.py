@@ -64,11 +64,11 @@ class GraphDecoder:
         if S:
             self.S = S
         elif not brute and hasattr(code, "_get_all_processed_results"):
-            self.S = self._make_syndrome_graph(
+            self.S,_ = self._make_syndrome_graph(
                 results=code._get_all_processed_results()
             )
         else:
-            self.S = self._make_syndrome_graph()
+            self.S, self.error_circuit = self._make_syndrome_graph()
 
     def _separate_string(self, string):
 
@@ -174,7 +174,7 @@ class GraphDecoder:
                                             node_map[source], node_map[target], 1
                                         )
 
-        return S
+        return S, error_circuit
 
     def get_error_probs(self, results, logical="0"):
         """
