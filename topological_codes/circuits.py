@@ -525,7 +525,7 @@ class SurfaceCode():
         """
         for log in logs:
             for j in range(self.d):
-                self.circuit[log].x(self.code_qubit[j*d])
+                self.circuit[log].x(self.code_qubit[j*self.d])
             if barrier:
                 self.circuit[log].barrier()
 
