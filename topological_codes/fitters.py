@@ -77,7 +77,7 @@ class GraphDecoder:
             separated_string.append(syndrome_type_string.split(" "))
         return separated_string
 
-    def _string2nodes(self, string, logical="0"):
+    def string2nodes(self, string, logical="0"):
 
         separated_string = self._separate_string(string)
         nodes = []
@@ -98,7 +98,7 @@ class GraphDecoder:
 
             node_map = {}
             for string in results:
-                nodes = self._string2nodes(string)
+                nodes = self.string2nodes(string)
                 for node in nodes:
                     if node not in node_map:
                         node_map[node] = S.add_node(node)
@@ -151,7 +151,7 @@ class GraphDecoder:
 
                         for string in results:
 
-                            nodes = self._string2nodes(string)
+                            nodes = self.string2nodes(string)
 
                             assert len(nodes) in [0, 2], (
                                 "Error of type "
@@ -215,7 +215,7 @@ class GraphDecoder:
         for string in results:
 
             # list of i for which v_i=1
-            error_nodes = self._string2nodes(string, logical=logical)
+            error_nodes = self.string2nodes(string, logical=logical)
 
             for node0 in error_nodes:
                 av_v[node0] += results[string]
