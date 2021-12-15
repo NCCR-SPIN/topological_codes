@@ -686,7 +686,7 @@ class SurfaceCode():
                                 change = (syndrome_list[-t - 1][j]
                                           != syndrome_list[-t + 1][j])
                             syndrome_changes += '0' * (not change) + '1' * change
-                        syndrome_changes += ' '
+                    syndrome_changes += ' '
 
                 # the space separated string of syndrome changes then gets a
                 # double space separated logical value on the end
