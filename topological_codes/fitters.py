@@ -270,48 +270,45 @@ class GraphDecoder:
                 
         else:
             
+            results = results[logical]
+            shots = sum(results.values())
 
-        results = results[logical]
-        shots = sum(results.values())
+            count = {element: {edge: 0 for edge in self.S.edge_list()}
+                     for element in ['00', '01', '10', '11']}
 
-        count = {element: {edge: 0 for edge in self.S.edge_list()}
-                 for element in ['00', '01', '10', '11']}
+            for string in results:
 
-        for string in results:
+                nodes = self.string2nodes(string, logical=logical)
 
-            nodes = self.string2nodes(string, logical=logical)
+                for edge in self.S.edge_list():
+                    element = ''
+                    for j in range(2):
+                        if self.S[edge[j]] in nodes:
+                            element += '1'
+                        else:
+                            element += '0'
+                    count[element][edge] += results[string]
 
+            error_probs = {}
             for edge in self.S.edge_list():
-                element = ''
-                for j in range(2):
-                    if self.S[edge[j]] in nodes:
-                        element += '1'
-                    else:
-                        element += '0'
-                count[element][edge] += results[string]
-
-        error_probs = {}
-        for edge in self.S.edge_list():
-            edge_data = self.S.get_edge_data(edge[0], edge[1])
-            ratios = []
-            for elements in [('00', '11'), ('11', '00'),
-                             ('01', '10'), ('10', '01')]:
-                if count[elements[1]][edge] > 0:
-                    ratio = count[elements[0]][edge]/count[elements[1]][edge]
-                    ratios.append(ratio)
-            ratio = min(ratios)
-            e0 = self.S[edge[0]]
-            e1 = self.S[edge[1]]
-            if e1[0]==0:
-                e1 = e0
-            if e0[0]==0:
-                e0 = e1
-            if (e0,e1) in error_probs:
-                error_probs[e0,e1] = max( ratio/(1+ratio), error_probs[e0,e1])
-            else:
-                error_probs[e0,e1] = ratio/(1+ratio)
-
-    return error_probs
+                edge_data = self.S.get_edge_data(edge[0], edge[1])
+                ratios = []
+                for elements in [('00', '11'), ('11', '00'),
+                                 ('01', '10'), ('10', '01')]:
+                    if count[elements[1]][edge] > 0:
+                        ratio = count[elements[0]][edge]/count[elements[1]][edge]
+                        ratios.append(ratio)
+                ratio = min(ratios)
+                e0 = self.S[edge[0]]
+                e1 = self.S[edge[1]]
+                if e1[0]==0:
+                    e1 = e0
+                if e0[0]==0:
+                    e0 = e1
+                if (e0,e1) in error_probs:
+                    error_probs[e0,e1] = max( ratio/(1+ratio), error_probs[e0,e1])
+                else:
+                    error_probs[e0,e1] = ratio/(1+ratio)
 
         return error_probs
 
