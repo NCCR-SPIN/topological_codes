@@ -19,10 +19,10 @@
 import unittest
 import retworkx as rx
 
-from qiskit.ignis.verification.topological_codes import RepetitionCode
-from qiskit.ignis.verification.topological_codes import GraphDecoder
-from qiskit.ignis.verification.topological_codes import lookuptable_decoding
-from qiskit.ignis.verification.topological_codes import postselection_decoding
+from topological_codes import RepetitionCode
+from topological_codes import GraphDecoder
+from topological_codes import lookuptable_decoding
+from topological_codes import postselection_decoding
 
 from qiskit import execute, Aer, QuantumCircuit
 from qiskit.providers.aer.noise import NoiseModel
@@ -105,7 +105,7 @@ class TestCodes(unittest.TestCase):
                         )
                         results = code.process_results(raw_results)[logical]
                         for string in results:
-                            nodes = decoder._string2nodes(string, logical=logical)
+                            nodes = decoder.string2nodes(string, logical=logical)
                             self.assertIn(
                                 len(nodes),
                                 [0, 2],
@@ -127,7 +127,7 @@ class TestCodes(unittest.TestCase):
         s0 = "0 0  01 00 01"
         s1 = "1 1  01 00 01"
         self.assertTrue(
-            dec._string2nodes(s0, logical="0") == dec._string2nodes(s1, logical="1"),
+            dec.string2nodes(s0, logical="0") == dec.string2nodes(s1, logical="1"),
             "Error: Incorrect nodes from results string",
         )
 
