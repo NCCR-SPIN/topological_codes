@@ -256,20 +256,22 @@ class TestCodes(unittest.TestCase):
 
     def test_graph(self):
         """Test if analytically derived SyndromeGraph is correct."""
-        error = (
+        for resets in [True, False]:
+            error = (
             "Error: The analytical SyndromeGraph does not coincide "
-            + "with the brute force SyndromeGraph in d=7, T=2 RepetitionCode."
-        )
-        code = RepetitionCode(7, 2)
-        graph_new = GraphDecoder(code, brute=False).S
-        graph_old = GraphDecoder(code, brute=True).S
-        test_passed = True
-        for node in graph_new.nodes():
-            test_passed &= node in graph_old.nodes()
-        for node in graph_old.nodes():
-            test_passed &= node in graph_new.nodes()
-        test_passed &= rx.is_isomorphic(graph_new, graph_old, lambda x, y: x == y)
-        self.assertTrue(test_passed, error)
+                + "with the brute force SyndromeGraph in d=7, T=2, "
+                +"resets="+str(resets)+" RepetitionCode."
+            )
+            code = RepetitionCode(7, 2, resets=resets)
+            graph_new = GraphDecoder(code, brute=False).S
+            graph_old = GraphDecoder(code, brute=True).S
+            test_passed = True
+            for node in graph_new.nodes():
+                test_passed &= node in graph_old.nodes()
+            for node in graph_old.nodes():
+                test_passed &= node in graph_new.nodes()
+            test_passed &= rx.is_isomorphic(graph_new, graph_old, lambda x, y: x == y)
+            self.assertTrue(test_passed, error)
 
 
 if __name__ == "__main__":

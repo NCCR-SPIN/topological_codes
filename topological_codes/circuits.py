@@ -265,16 +265,22 @@ class RepetitionCode:
         results = []
         for r in range(T):
             for i in range(d - 1):
+                # flip before measurement
                 syn.bitflip_ancilla(i, r)
                 results.append(syn.get_processed_results())
-                syn.bitflip_ancilla(i, r)  # undo the error
+                # additional flip after measurement
+                if not self._resets:
+                    if r+1<T:
+                        syn.bitflip_ancilla(i, r+1)
+                        results.append(syn.get_processed_results()) # undo the error
+                        syn.bitflip_ancilla(i, r+1)
+                syn.bitflip_ancilla(i, r) # undo the error
+                
             for i in range(d):
-                syn.bitflip_data(i, r, True)
-                results.append(syn.get_processed_results())
-                syn.bitflip_data(i, r, True)  # undo the error
-                syn.bitflip_data(i, r, False)
-                results.append(syn.get_processed_results())
-                syn.bitflip_data(i, r, False)  # undo the error
+                for middle in [False,True]:
+                    syn.bitflip_data(i, r, middle)
+                    results.append(syn.get_processed_results())
+                    syn.bitflip_data(i, r, middle)  # undo the error
         for i in range(d):
             syn.bitflip_readout(i)
             results.append(syn.get_processed_results())

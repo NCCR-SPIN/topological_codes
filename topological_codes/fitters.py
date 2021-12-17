@@ -63,7 +63,7 @@ class GraphDecoder:
 
         if S:
             self.S = S
-        elif not brute and hasattr(code, "_get_all_processed_results"):
+        elif not brute and hasattr(code, "_get_all_processed_results") and code._resets==True:
             self.S = self._make_syndrome_graph(
                 results=code._get_all_processed_results()
             )
@@ -128,6 +128,17 @@ class GraphDecoder:
                         temp_qc.data = qc.data[0:j]
                         getattr(temp_qc, error)(qubit)
                         temp_qc.data += qc.data[j: depth + 1]
+                        circuit_name[(j, qubit, error)] = temp_qc.name
+                        error_circuit[temp_qc.name] = temp_qc
+                    if qc.data[j][0].name=='measure' and not self.code._resets:
+                        # conjugate measurement by bit flips
+                        temp_qc = copy.deepcopy(blank_qc)
+                        temp_qc.name = str((j, qubit, "x m x"))
+                        temp_qc.data = qc.data[0:j]
+                        getattr(temp_qc, "x")(qubit)
+                        temp_qc.data += [qc.data[j]]
+                        getattr(temp_qc, "x")(qubit)
+                        temp_qc.data += qc.data[j+1: depth + 1]
                         circuit_name[(j, qubit, error)] = temp_qc.name
                         error_circuit[temp_qc.name] = temp_qc
 
