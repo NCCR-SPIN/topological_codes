@@ -130,17 +130,6 @@ class GraphDecoder:
                         temp_qc.data += qc.data[j: depth + 1]
                         circuit_name[(j, qubit, error)] = temp_qc.name
                         error_circuit[temp_qc.name] = temp_qc
-                    if qc.data[j][0].name=='measure' and not self.code._resets:
-                        # conjugate measurement by bit flips
-                        temp_qc = copy.deepcopy(blank_qc)
-                        temp_qc.name = str((j, qubit, "x m x"))
-                        temp_qc.data = qc.data[0:j]
-                        getattr(temp_qc, "x")(qubit)
-                        temp_qc.data += [qc.data[j]]
-                        getattr(temp_qc, "x")(qubit)
-                        temp_qc.data += qc.data[j+1: depth + 1]
-                        circuit_name[(j, qubit, error)] = temp_qc.name
-                        error_circuit[temp_qc.name] = temp_qc
 
             if HAS_AER:
                 simulator = Aer.get_backend("aer_simulator")
