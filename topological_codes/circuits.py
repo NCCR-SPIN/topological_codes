@@ -268,14 +268,7 @@ class RepetitionCode:
                 # flip before measurement
                 syn.bitflip_ancilla(i, r)
                 results.append(syn.get_processed_results())
-                # additional flip after measurement
-                if not self._resets:
-                    if r+1<T:
-                        syn.bitflip_ancilla(i, r+1)
-                        results.append(syn.get_processed_results()) # undo the error
-                        syn.bitflip_ancilla(i, r+1)
                 syn.bitflip_ancilla(i, r) # undo the error
-                
             for i in range(d):
                 for middle in [False,True]:
                     syn.bitflip_data(i, r, middle)
