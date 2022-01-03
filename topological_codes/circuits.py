@@ -266,6 +266,10 @@ class RepetitionCode:
             for i in range(d - 1):
                 syn.bitflip_ancilla(i, r)
                 results.append(syn.get_processed_results())
+                if not self._resets and r+1<T:
+                    syn.bitflip_ancilla(i, r+1)
+                    results.append(syn.get_processed_results())
+                    syn.bitflip_ancilla(i, r+1)
                 syn.bitflip_ancilla(i, r)  # undo the error
             for i in range(d):
                 syn.bitflip_data(i, r, True)
