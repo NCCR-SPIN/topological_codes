@@ -120,16 +120,31 @@ class GraphDecoder:
             circuit_name = {}
             depth = len(qc)
             for j in range(depth):
+                gate = qc.data[j][0].name
                 qubits = qc.data[j][1]
-                for qubit in qubits:
+                if gate not in ['measure', 'reset']:
                     for error in ["x", "y", "z"]:
-                        temp_qc = copy.deepcopy(blank_qc)
-                        temp_qc.name = str((j, qubit, error))
-                        temp_qc.data = qc.data[0:j]
-                        getattr(temp_qc, error)(qubit)
-                        temp_qc.data += qc.data[j: depth + 1]
-                        circuit_name[(j, qubit, error)] = temp_qc.name
-                        error_circuit[temp_qc.name] = temp_qc
+                        for qubit in qubits:
+                            temp_qc = copy.deepcopy(blank_qc)
+                            temp_qc.name = str((j, qubit, error))
+                            temp_qc.data = qc.data[0:j]
+                            getattr(temp_qc, error)(qubit)
+                            temp_qc.data += qc.data[j: depth + 1]
+                            circuit_name[(j, qubit, error)] = temp_qc.name
+                            error_circuit[temp_qc.name] = temp_qc
+                elif gate=='measure':
+                    pre_error = "x"
+                    for post_error in ["id","x"]:
+                        for qubit in qubits:
+                            temp_qc = copy.deepcopy(blank_qc)
+                            temp_qc.name = str((j, qubit, error))
+                            temp_qc.data = qc.data[0:j]
+                            getattr(temp_qc, pre_error)(qubit)
+                            temp_qc.data.append(qc.data[j])
+                            getattr(temp_qc, post_error)(qubit)
+                            temp_qc.data += qc.data[j+1: depth + 1]
+                            circuit_name[(j, qubit, error)] = temp_qc.name
+                            error_circuit[temp_qc.name] = temp_qc
 
             if HAS_AER:
                 simulator = Aer.get_backend("aer_simulator")
