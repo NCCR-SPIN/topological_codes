@@ -19,10 +19,9 @@
 import unittest
 import retworkx as rx
 
-from qiskit.ignis.verification.topological_codes import RepetitionCode
-from qiskit.ignis.verification.topological_codes import GraphDecoder
-from qiskit.ignis.verification.topological_codes import lookuptable_decoding
-from qiskit.ignis.verification.topological_codes import postselection_decoding
+sys.path.append('../../topological_codes')
+from circuits import RepetitionCode
+from fitters import GraphDecoder, lookuptable_decoding, postselection_decoding
 
 from qiskit import execute, Aer, QuantumCircuit
 from qiskit.providers.aer.noise import NoiseModel
