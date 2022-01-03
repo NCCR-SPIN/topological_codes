@@ -257,7 +257,7 @@ class TestCodes(unittest.TestCase):
     def test_graph(self):
         """Test if analytically derived SyndromeGraph is correct."""
         
-        for resets in [True]:
+        for resets in [True, False]:
             error = (
                 "Error: The analytical SyndromeGraph does not coincide "
                 + "with the brute force SyndromeGraph in d=7, T=2, resets="+str(resets)+" RepetitionCode."
