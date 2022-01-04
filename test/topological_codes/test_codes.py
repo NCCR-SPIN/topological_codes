@@ -19,10 +19,10 @@
 import unittest
 import retworkx as rx
 
-from topological_codes import RepetitionCode
-from topological_codes import GraphDecoder
-from topological_codes import lookuptable_decoding
-from topological_codes import postselection_decoding
+import sys
+sys.path.append('../../topological_codes')
+from circuits import RepetitionCode
+from fitters import GraphDecoder, lookuptable_decoding, postselection_decoding
 
 from qiskit import execute, Aer, QuantumCircuit
 from qiskit.providers.aer.noise import NoiseModel
@@ -256,11 +256,10 @@ class TestCodes(unittest.TestCase):
 
     def test_graph(self):
         """Test if analytically derived SyndromeGraph is correct."""
-        for resets in [True]:
+        for resets in [True, False]:
             error = (
-            "Error: The analytical SyndromeGraph does not coincide "
-                + "with the brute force SyndromeGraph in d=7, T=2, "
-                +"resets="+str(resets)+" RepetitionCode."
+                "Error: The analytical SyndromeGraph does not coincide "
+                + "with the brute force SyndromeGraph in d=7, T=2, resets="+str(resets)+" RepetitionCode."
             )
             code = RepetitionCode(7, 2, resets=resets)
             graph_new = GraphDecoder(code, brute=False).S

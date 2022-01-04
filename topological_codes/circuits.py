@@ -268,7 +268,11 @@ class RepetitionCode:
                 # flip before measurement
                 syn.bitflip_ancilla(i, r)
                 results.append(syn.get_processed_results())
-                syn.bitflip_ancilla(i, r) # undo the error
+                if not self._resets and r+1<T:
+                    syn.bitflip_ancilla(i, r+1)
+                    results.append(syn.get_processed_results())
+                    syn.bitflip_ancilla(i, r+1)
+                syn.bitflip_ancilla(i, r)  # undo the error
             for i in range(d):
                 for middle in [False,True]:
                     syn.bitflip_data(i, r, middle)
@@ -422,6 +426,7 @@ class RepetitionCodeSyndromeGenerator:
     
     
 class SurfaceCode():
+
     """
     Implementation of a distance d rotated surface code, implemented over
     T syndrome measurement rounds.
@@ -485,11 +490,13 @@ class SurfaceCode():
             self.readout()
 
     def _get_plaquettes(self):
+
         """
         Returns `zplaqs` and `xplaqs`, which are lists of the Z and X type
         stabilizers. Each plaquettes is specified as a list of four qubits,
         in the order in which entangling gates are applied.
         """
+
         d = self.d
 
         zplaqs = []
@@ -573,6 +580,7 @@ class SurfaceCode():
         """
         Application of a syndrome measurement round.
         Args:
+
             final (bool): Whether to disregard the reset (if applicable) due to this
             being the final syndrome measurement round.
             barrier (bool): Boolean denoting whether to include a barrier at the end.
@@ -635,6 +643,7 @@ class SurfaceCode():
             self.circuit[log].measure(self.code_qubit, self.code_bit)
 
     def process_results(self, raw_results):
+
         """
         Args:
             raw_results (dict): A dictionary whose keys are logical values,
@@ -742,4 +751,3 @@ class SurfaceCode():
                     results[log][new_string] = raw_results[log][string]
 
         return results
- 
