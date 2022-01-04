@@ -63,7 +63,7 @@ class GraphDecoder:
 
         if S:
             self.S = S
-        elif not brute and hasattr(code, "_get_all_processed_results"):
+        elif not brute and hasattr(code, "_get_all_processed_results") and code._resets==True:
             self.S = self._make_syndrome_graph(
                 results=code._get_all_processed_results()
             )
@@ -193,7 +193,7 @@ class GraphDecoder:
 
         return S
 
-    def get_error_probs(self, results, logical="0"):
+    def get_error_probs(self, results, logical="0", use_old=False):
         """
         Generate probabilities of single error events from result counts.
         Args:
@@ -209,79 +209,123 @@ class GraphDecoder:
             Calculation done using the method of Spitz, et al.
             https://doi.org/10.1002/qute.201800012
         """
+        
+        if not use_old:
 
-        results = results[logical]
-        shots = sum(results.values())
+            results = results[logical]
+            shots = sum(results.values())
 
-        neighbours = {}
-        av_v = {}
-        for node in self.S.nodes():
-            av_v[node] = 0
-            neighbours[node] = []
+            neighbours = {}
+            av_v = {}
+            for node in self.S.nodes():
+                av_v[node] = 0
+                neighbours[node] = []
 
-        av_vv = {}
-        av_xor = {}
-        for edge in self.S.edge_list():
-            node0, node1 = self.S[edge[0]], self.S[edge[1]]
-            av_vv[node0, node1] = 0
-            av_xor[node0, node1] = 0
-            neighbours[node0].append(node1)
-            neighbours[node1].append(node0)
+            av_vv = {}
+            av_xor = {}
+            for edge in self.S.edge_list():
+                node0, node1 = self.S[edge[0]], self.S[edge[1]]
+                av_vv[node0, node1] = 0
+                av_xor[node0, node1] = 0
+                neighbours[node0].append(node1)
+                neighbours[node1].append(node0)
 
-        error_probs = {}
-        for string in results:
+            error_probs = {}
+            for string in results:
 
-            # list of i for which v_i=1
-            error_nodes = self.string2nodes(string, logical=logical)
+                # list of i for which v_i=1
+                error_nodes = self.string2nodes(string, logical=logical)
 
-            for node0 in error_nodes:
-                av_v[node0] += results[string]
-                for node1 in neighbours[node0]:
-                    if node1 in error_nodes and (node0, node1) in av_vv:
-                        av_vv[node0, node1] += results[string]
-                    if node1 not in error_nodes:
-                        if (node0, node1) in av_xor:
-                            av_xor[node0, node1] += results[string]
-                        else:
-                            av_xor[node1, node0] += results[string]
+                for node0 in error_nodes:
+                    av_v[node0] += results[string]
+                    for node1 in neighbours[node0]:
+                        if node1 in error_nodes and (node0, node1) in av_vv:
+                            av_vv[node0, node1] += results[string]
+                        if node1 not in error_nodes:
+                            if (node0, node1) in av_xor:
+                                av_xor[node0, node1] += results[string]
+                            else:
+                                av_xor[node1, node0] += results[string]
 
-        for node in self.S.nodes():
-            av_v[node] /= shots
-        for edge in self.S.edge_list():
-            node0, node1 = self.S[edge[0]], self.S[edge[1]]
-            av_vv[node0, node1] /= shots
-            av_xor[node0, node1] /= shots
+            for node in self.S.nodes():
+                av_v[node] /= shots
+            for edge in self.S.edge_list():
+                node0, node1 = self.S[edge[0]], self.S[edge[1]]
+                av_vv[node0, node1] /= shots
+                av_xor[node0, node1] /= shots
 
-        boundary = []
-        for edge in self.S.edge_list():
-            node0, node1 = self.S[edge[0]], self.S[edge[1]]
+            boundary = []
+            for edge in self.S.edge_list():
+                node0, node1 = self.S[edge[0]], self.S[edge[1]]
 
-            if node0[0] == 0:
-                boundary.append(node1)
-            elif node1[0] == 0:
-                boundary.append(node0)
-            else:
-                if (1 - 2 * av_xor[node0, node1]) != 0:
-                    x = (av_vv[node0, node1] - av_v[node0] * av_v[node1]) / (
-                        1 - 2 * av_xor[node0, node1]
-                    )
-                    error_probs[node0, node1] = max(0, 0.5 - np.sqrt(0.25 - x))
+                if node0[0] == 0:
+                    boundary.append(node1)
+                elif node1[0] == 0:
+                    boundary.append(node0)
                 else:
-                    error_probs[node0, node1] = np.nan
+                    if (1 - 2 * av_xor[node0, node1]) != 0:
+                        x = (av_vv[node0, node1] - av_v[node0] * av_v[node1]) / (
+                            1 - 2 * av_xor[node0, node1]
+                        )
+                        error_probs[node0, node1] = max(0, 0.5 - np.sqrt(0.25 - x))
+                    else:
+                        error_probs[node0, node1] = np.nan
 
-        prod = {}
-        for node0 in boundary:
-            for node1 in self.S.nodes():
-                if node0 != node1:
-                    if node0 not in prod:
-                        prod[node0] = 1
-                    if (node0, node1) in error_probs:
-                        prod[node0] *= (1 - 2*error_probs[node0, node1])
-                    elif (node1, node0) in error_probs:
-                        prod[node0] *= (1 - 2*error_probs[node1, node0])
+            prod = {}
+            for node0 in boundary:
+                for node1 in self.S.nodes():
+                    if node0 != node1:
+                        if node0 not in prod:
+                            prod[node0] = 1
+                        if (node0, node1) in error_probs:
+                            prod[node0] *= (1 - 2*error_probs[node0, node1])
+                        elif (node1, node0) in error_probs:
+                            prod[node0] *= (1 - 2*error_probs[node1, node0])
 
-        for node0 in boundary:
-            error_probs[node0, node0] = 0.5 + (av_v[node0] - 0.5) / prod[node0]
+            for node0 in boundary:
+                error_probs[node0, node0] = 0.5 + (av_v[node0] - 0.5) / prod[node0]
+                
+        else:
+            
+            results = results[logical]
+            shots = sum(results.values())
+
+            count = {element: {edge: 0 for edge in self.S.edge_list()}
+                     for element in ['00', '01', '10', '11']}
+
+            for string in results:
+
+                nodes = self.string2nodes(string, logical=logical)
+
+                for edge in self.S.edge_list():
+                    element = ''
+                    for j in range(2):
+                        if self.S[edge[j]] in nodes:
+                            element += '1'
+                        else:
+                            element += '0'
+                    count[element][edge] += results[string]
+
+            error_probs = {}
+            for edge in self.S.edge_list():
+                edge_data = self.S.get_edge_data(edge[0], edge[1])
+                ratios = []
+                for elements in [('00', '11'), ('11', '00'),
+                                 ('01', '10'), ('10', '01')]:
+                    if count[elements[1]][edge] > 0:
+                        ratio = count[elements[0]][edge]/count[elements[1]][edge]
+                        ratios.append(ratio)
+                ratio = min(ratios)
+                e0 = self.S[edge[0]]
+                e1 = self.S[edge[1]]
+                if e1[0]==0:
+                    e1 = e0
+                if e0[0]==0:
+                    e0 = e1
+                if (e0,e1) in error_probs:
+                    error_probs[e0,e1] = max( ratio/(1+ratio), error_probs[e0,e1])
+                else:
+                    error_probs[e0,e1] = ratio/(1+ratio)
 
         return error_probs
 

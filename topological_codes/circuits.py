@@ -121,7 +121,8 @@ class RepetitionCode:
         Application of a syndrome measurement round.
 
         Args:
-            final (bool): Whether this is the final syndrome measurement round.
+            final (bool): Whether to disregard the reset (if applicable) due to this
+            being the final syndrome measurement round.
             barrier (bool): Boolean denoting whether to include a barrier at the end.
             delay (float): Time (in dt) to delay after mid-circuit measurements (and delay).
         """
@@ -264,6 +265,7 @@ class RepetitionCode:
         results = []
         for r in range(T):
             for i in range(d - 1):
+                # flip before measurement
                 syn.bitflip_ancilla(i, r)
                 results.append(syn.get_processed_results())
                 if not self._resets and r+1<T:
@@ -272,12 +274,10 @@ class RepetitionCode:
                     syn.bitflip_ancilla(i, r+1)
                 syn.bitflip_ancilla(i, r)  # undo the error
             for i in range(d):
-                syn.bitflip_data(i, r, True)
-                results.append(syn.get_processed_results())
-                syn.bitflip_data(i, r, True)  # undo the error
-                syn.bitflip_data(i, r, False)
-                results.append(syn.get_processed_results())
-                syn.bitflip_data(i, r, False)  # undo the error
+                for middle in [False,True]:
+                    syn.bitflip_data(i, r, middle)
+                    results.append(syn.get_processed_results())
+                    syn.bitflip_data(i, r, middle)  # undo the error
         for i in range(d):
             syn.bitflip_readout(i)
             results.append(syn.get_processed_results())
@@ -427,7 +427,29 @@ class RepetitionCodeSyndromeGenerator:
     
 class SurfaceCode():
 
+    """
+    Implementation of a distance d rotated surface code, implemented over
+    T syndrome measurement rounds.
+    """
+
     def __init__(self,d,T,basis='z',resets=True):
+        """
+        Creates the circuits corresponding to logical basis states encoded
+        using a rotated surface code.
+
+        Args:
+            d (int): Number of code qubits (and hence repetitions) used.
+            T (int): Number of rounds of ancilla-assisted syndrome measurement.
+            basis (string): The logical basis ('z' or 'x') for which states are enocded.
+            resets (bool): Whether to include a reset gate after mid-circuit measurements.
+
+
+        Additional information:
+            No measurements are added to the circuit if `T=0`. Otherwise
+            `T` rounds are added, followed by measurement of the code
+            qubits (corresponding to a logical measurement and final
+            syndrome measurement round).
+        """
 
         self.d = d
         self.T = 0
@@ -468,6 +490,12 @@ class SurfaceCode():
             self.readout()
 
     def _get_plaquettes(self):
+
+        """
+        Returns `zplaqs` and `xplaqs`, which are lists of the Z and X type
+        stabilizers. Each plaquettes is specified as a list of four qubits,
+        in the order in which entangling gates are applied.
+        """
 
         d = self.d
 
@@ -552,7 +580,9 @@ class SurfaceCode():
         """
         Application of a syndrome measurement round.
         Args:
-            reset (bool): If set to true add a boolean at the end of each round
+
+            final (bool): Whether to disregard the reset (if applicable) due to this
+            being the final syndrome measurement round.
             barrier (bool): Boolean denoting whether to include a barrier at the end.
 
         """
@@ -614,6 +644,25 @@ class SurfaceCode():
 
     def process_results(self, raw_results):
 
+        """
+        Args:
+            raw_results (dict): A dictionary whose keys are logical values,
+                and whose values are standard counts dictionaries, (as
+                obtained from the `get_counts` method of a ``qiskit.Result``
+                object).
+
+        Returns:
+            results: Dictionary with the same structure as the input, but with
+                the bit strings used as keys in the counts dictionaries
+                converted to the form required by the decoder.
+
+        Additional information:
+            The circuits must be executed outside of this class, so that
+            their is full freedom to compile, choose a backend, use a
+            noise model, etc. The results from these executions should then
+            be used to create the input for this method.
+        """
+        
         zplaqs,xplaqs = self.zplaqs, self.xplaqs
 
         results = {}
