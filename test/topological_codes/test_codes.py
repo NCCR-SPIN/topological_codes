@@ -21,7 +21,7 @@ import retworkx as rx
 
 import sys
 sys.path.append('../../topological_codes')
-from circuits import RepetitionCode
+from circuits import RepetitionCode, SurfaceCode
 from fitters import GraphDecoder, lookuptable_decoding, postselection_decoding
 
 from qiskit import execute, Aer, QuantumCircuit
@@ -29,7 +29,7 @@ from qiskit.providers.aer.noise import NoiseModel
 from qiskit.providers.aer.noise.errors import pauli_error, depolarizing_error
 
 
-def get_syndrome(code, noise_model, shots=1014):
+def get_syndrome(code, noise_model, shots=1024):
     """Runs a code to get required results."""
     circuits = [code.circuit[log] for log in ["0", "1"]]
 
@@ -53,8 +53,8 @@ def get_noise(p_meas, p_gate):
     error_gate2 = error_gate1.tensor(error_gate1)
 
     noise_model = NoiseModel()
-    noise_model.add_all_qubit_quantum_error(error_meas, "measure")
-    noise_model.add_all_qubit_quantum_error(error_gate1, ["u1", "u2", "u3"])
+    noise_model.add_all_qubit_readout_error([[1-p_meas,p_meas],[p_meas,1-p_meas]])
+    noise_model.add_all_qubit_quantum_error(error_gate1, ["h"])
     noise_model.add_all_qubit_quantum_error(error_gate2, ["cx"])
 
     return noise_model
@@ -93,7 +93,7 @@ class TestCodes(unittest.TestCase):
                         error_circuit[temp_qc.name] = temp_qc
 
             simulator = Aer.get_backend("aer_simulator")
-            job = execute(list(error_circuit.values()), simulator)
+            job = simulator.run(list(error_circuit.values()), shots=1)
 
             for j in range(depth):
                 qubits = qc.data[j][1]
@@ -130,25 +130,38 @@ class TestCodes(unittest.TestCase):
             dec.string2nodes(s0, logical="0") == dec.string2nodes(s1, logical="1"),
             "Error: Incorrect nodes from results string",
         )
+        print('test_string2nodes: ok')
 
     def test_graph_construction(self):
         """Check that single errors create a pair of nodes for all types of code."""
+        codes = {}
         for d in [2, 3]:
             for T in [1, 2]:
                 for xbasis in [False, True]:
                     for resets in [False, True]:
                         for delay in [0, 16]:
-                            code = RepetitionCode(d, T, xbasis=xbasis, resets=resets, delay=delay)
-                            self.single_error_test(code)
-                            if delay > 0 and T > 1:
-                                num_delays = code.circuit['0'].count_ops()['delay']
-                                self.assertTrue(
-                                    num_delays == (d-1)*(T-1),
-                                    "Error: wrong number of delay gates."
-                                )
+                            codes[d,T,xbasis,resets,delay] = RepetitionCode(d, T, xbasis=xbasis, resets=resets, delay=delay)
+        d,T = 3,1
+        for basis in ['z', 'x']:
+            for resets in [False, True]:
+                    codes[d,T,basis,resets] = SurfaceCode(d, T, basis=basis, resets=resets)
+        for params in codes:
+            d,T = params[0:2]
+            code = codes[params]                
+            self.single_error_test(code)
+            if len(params)==5:
+                d,T,xbasis,resets,delay = params
+                if delay > 0 and T > 1:
+                    num_delays = code.circuit['0'].count_ops()['delay']
+                    self.assertTrue(
+                        num_delays == (d-1)*(T-1),
+                        "Error: wrong number of delay gates."
+                    )
+        print('test_graph_construction: ok')
 
     def test_weight(self):
         """Error weighting code test."""
+        # First repetition
         error = (
             "Error: Calculated error probability not correct for "
             + "test result '0 0  11 00' in d=3, T=1 repetition code."
@@ -158,6 +171,17 @@ class TestCodes(unittest.TestCase):
         test_results = {"0": {"0 0  00 00": 1024, "0 0  11 00": 512}}
         p = dec.get_error_probs(test_results)
         self.assertTrue(round(p[(1, 0, 0), (1, 0, 1)], 2) == 0.33, error)
+        # Then surface
+        error = (
+            "Error: Calculated error probability not correct for "
+            + "test result '0 0  11 00' in d=3, T=1 surface code."
+        )
+        code = SurfaceCode(3, 1)
+        dec = GraphDecoder(code)
+        test_results = {'0':{'0 0  0000 0000':1024, '0 0  0101 0000':512}}
+        p = dec.get_error_probs(test_results)
+        self.assertTrue(round(p[((1, 0, 1), (1, 0, 3))], 2) == 0.33, error)
+        print('test_weight: ok')
 
     def test_rep_probs(self):
         """Repetition code test."""
@@ -253,6 +277,23 @@ class TestCodes(unittest.TestCase):
                 self.assertTrue(m_down or matching_probs[(d, log)] == 0.0, m_error)
                 self.assertTrue(l_down or lookup_probs[(d, log)] == 0.0, l_error)
                 self.assertTrue(p_down or post_probs[(d, log)] == 0.0, p_error)
+        print('test_rep_probs: ok')
+                
+    def test_surface_probs(self):
+        "Test logical error probabilities for d=3, T=1 surface codes"
+        for p in [0.001]:
+            for basis in ['z']:
+                noise_model = get_noise(p, p)
+                code = SurfaceCode(3,1,basis=basis)
+                dec = GraphDecoder(code)
+                results = get_syndrome(code, noise_model)
+                matching_probs = dec.get_logical_prob(results)
+                for log in matching_probs:
+                    self.assertTrue(
+                        matching_probs[log]<p,
+                        'Logical probability incorrect for d=3, T=1 surface codes.'
+                    )
+        print('test_surface_probs: ok')
 
     def test_graph(self):
         """Test if analytically derived SyndromeGraph is correct."""
@@ -271,6 +312,7 @@ class TestCodes(unittest.TestCase):
                 test_passed &= node in graph_new.nodes()
             test_passed &= rx.is_isomorphic(graph_new, graph_old, lambda x, y: x == y)
             self.assertTrue(test_passed, error)
+        print('test_graph: ok')
 
 
 if __name__ == "__main__":
