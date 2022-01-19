@@ -35,7 +35,7 @@ def get_syndrome(code, noise_model, shots=1024):
 
     job = execute(
         circuits,
-        Aer.get_backend("aer_simulator"),
+        Aer.get_backend("aer_simulator_stabilizer"),
         noise_model=noise_model,
         shots=shots,
     )
@@ -282,7 +282,7 @@ class TestCodes(unittest.TestCase):
     def test_surface_probs(self):
         "Test logical error probabilities for d=3, T=1 surface codes"
         for p in [0.001]:
-            for basis in ['z']:
+            for basis in ['z', 'x']:
                 noise_model = get_noise(p, p)
                 code = SurfaceCode(3,1,basis=basis)
                 dec = GraphDecoder(code)
