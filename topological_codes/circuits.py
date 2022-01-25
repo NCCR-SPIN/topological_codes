@@ -641,8 +641,73 @@ class SurfaceCode():
                 self.circuit[log].h(self.code_qubit)
             self.circuit[log].add_register(self.code_bit)
             self.circuit[log].measure(self.code_qubit, self.code_bit)
+            
+    def _string2changes(self, string, basis=None):
+        
+        if not basis:
+            basis = self._basis
+        
+        # final syndrome for plaquettes deduced from final code qubit readout
+        final_readout = string.split(' ')[0][::-1]
+        if basis=='z':
+            plaqs = self.zplaqs
+        else:
+            plaqs = self.xplaqs
+        full_syndrome = ''
+        for plaq in plaqs:
+            parity = 0
+            for q in plaq:
+                if q!=None:
+                    parity += int(final_readout[q])
+            full_syndrome = str(parity%2) + full_syndrome
 
-    def process_results(self, raw_results):
+        # results from all other plaquette syndrome measurements then added
+        if basis=='z':
+            full_syndrome = full_syndrome + ' ' + ' '.join(string.split(' ')[2::2])
+        else:
+            full_syndrome = full_syndrome + ' ' + ' '.join(string.split(' ')[1::2])
+
+        # changes between one syndrome and the next then calculated
+        syndrome_list = full_syndrome.split(' ')
+        height = len(syndrome_list)
+        width = len(syndrome_list[0])
+        syndrome_changes = ''
+        for t in range(height):
+            for j in range(width):
+                if self._resets:
+                    if t == 0:
+                        change = (syndrome_list[-1][j] != '0')
+                    else:
+                        change = (syndrome_list[-t][j]
+                                  != syndrome_list[-t - 1][j])
+                    syndrome_changes += '0' * (not change) + '1' * change
+                else:
+                    if t <= 1:
+                        if t != self.T:
+                            change = (syndrome_list[-t - 1][j] != '0')
+                        else:
+                            change = (syndrome_list[-t - 1][j]
+                                      != syndrome_list[-t][j])
+                    elif t == self.T:
+                        last3 = ''
+                        for dt in range(3):
+                            last3 += syndrome_list[-t - 1 + dt][j]
+                        change = last3.count('1') % 2 == 1
+                    else:
+                        change = (syndrome_list[-t - 1][j]
+                                  != syndrome_list[-t + 1][j])
+                    syndrome_changes += '0' * (not change) + '1' * change
+            syndrome_changes += ' '
+        syndrome_changes = syndrome_changes[0:-1]
+        
+        if basis!=self._basis:
+            # trim the noisy nonsense (first and last rounds)
+            syndrome_changes = ' '.join(syndrome_changes.split(' ')[1:-1])
+
+        return syndrome_changes
+    
+
+    def process_results(self, raw_results, full=False):
 
         """
         Args:
@@ -662,8 +727,6 @@ class SurfaceCode():
             noise model, etc. The results from these executions should then
             be used to create the input for this method.
         """
-        
-        zplaqs,xplaqs = self.zplaqs, self.xplaqs
 
         results = {}
         for log in raw_results:
@@ -686,64 +749,21 @@ class SurfaceCode():
                         Z[0] = (Z[0] + int(final_readout[j*self.d]))%2
                         # evaluated using right side
                         Z[1] = (Z[1] + int(final_readout[(j+1)*self.d-1]))%2  
-
                 measured_Z = str(Z[0]) + ' ' + str(Z[1]) 
 
-                # final syndrome for plaquettes deduced from final code qubit readout
-                if self._basis=='z':
-                    plaqs = zplaqs
-                else:
-                    plaqs = xplaqs
-                full_syndrome = ''
-                for plaq in plaqs:
-                    parity = 0
-                    for q in plaq:
-                        if q!=None:
-                            parity += int(final_readout[q])
-                    full_syndrome = str(parity%2) + full_syndrome
-
-                # results from all other plaquette syndrome measurements then added
-                if self._basis=='z':
-                    full_syndrome = full_syndrome + ' ' + ' '.join(string.split(' ')[2::2])
-                else:
-                    full_syndrome = full_syndrome + ' ' + ' '.join(string.split(' ')[1::2])
-
-                # changes between one syndrome and the next then calculated
-                syndrome_list = full_syndrome.split(' ')
-
-                height = len(syndrome_list)
-                width = len(syndrome_list[0])
-                syndrome_changes = ''
-                for t in range(height):
-                    for j in range(width):
-                        if self._resets:
-                            if t == 0:
-                                change = (syndrome_list[-1][j] != '0')
-                            else:
-                                change = (syndrome_list[-t][j]
-                                          != syndrome_list[-t - 1][j])
-                            syndrome_changes += '0' * (not change) + '1' * change
-                        else:
-                            if t <= 1:
-                                if t != self.T:
-                                    change = (syndrome_list[-t - 1][j] != '0')
-                                else:
-                                    change = (syndrome_list[-t - 1][j]
-                                              != syndrome_list[-t][j])
-                            elif t == self.T:
-                                last3 = ''
-                                for dt in range(3):
-                                    last3 += syndrome_list[-t - 1 + dt][j]
-                                change = last3.count('1') % 2 == 1
-                            else:
-                                change = (syndrome_list[-t - 1][j]
-                                          != syndrome_list[-t + 1][j])
-                            syndrome_changes += '0' * (not change) + '1' * change
-                    syndrome_changes += ' '
+                # then get syndrome changes
+                syndrome_changes = self._string2changes(string)
+                
+                if full:
+                    # get syndrome changes for the other basis
+                    basis = 'x'*(self._basis=='z') + 'z'*(self._basis=='x')
+                    alt_changes = self._string2changes(string, basis=basis)
 
                 # the space separated string of syndrome changes then gets a
                 # double space separated logical value on the end
-                new_string = measured_Z + '  ' + syndrome_changes[:-1]
+                new_string = measured_Z + '  ' + syndrome_changes
+                if full and alt_changes:
+                    new_string = new_string + '  ' + alt_changes
 
                 if new_string in results[log]:
                     results[log][new_string] += raw_results[log][string]
