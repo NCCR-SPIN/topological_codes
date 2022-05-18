@@ -26,7 +26,7 @@ class RepetitionCode:
     T syndrome measurement rounds.
     """
 
-    def __init__(self, d, T=0, xbasis=False, resets=False, delay=0):
+    def __init__(self, d, T=0, xbasis=False, resets=False, delay=0, barriers=False):
         """
         Creates the circuits corresponding to a logical 0 and 1 encoded
         using a repetition code.
@@ -64,6 +64,7 @@ class RepetitionCode:
 
         self._xbasis = xbasis
         self._resets = resets
+        self._barriers = barriers
 
         self._preparation()
 
@@ -94,6 +95,7 @@ class RepetitionCode:
             barrier (bool): Boolean denoting whether to include a barrier at
                 the end.
         """
+        barrier = barrier or self._barriers
         for log in logs:
             if self._xbasis:
                 self.circuit[log].z(self.code_qubit)
@@ -107,7 +109,7 @@ class RepetitionCode:
         Prepares logical bit states by applying an x to the circuit that will
         encode a 1.
         """
-
+        barrier = barrier or self._barriers
         for log in ["0", "1"]:
             if self._xbasis:
                 self.circuit[log].h(self.code_qubit)
@@ -126,10 +128,13 @@ class RepetitionCode:
             barrier (bool): Boolean denoting whether to include a barrier at the end.
             delay (float): Time (in dt) to delay after mid-circuit measurements (and delay).
         """
+        
+        barrier = barrier or self._barriers
+        
         self.link_bits.append(
             ClassicalRegister((self.d - 1), "round_" + str(self.T) + "_link_bit")
         )
-
+        
         for log in ["0", "1"]:
 
             self.circuit[log].add_register(self.link_bits[-1])
