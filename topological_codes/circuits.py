@@ -111,7 +111,7 @@ class RepetitionCode:
         Prepares logical bit states by applying an x to the circuit that will
         encode a 1.
         """
-        
+
         barrier = barrier or self._barriers
         for log in ["0", "1"]:
             if self._xbasis:
@@ -131,17 +131,17 @@ class RepetitionCode:
             barrier (bool): Boolean denoting whether to include a barrier at the end.
             delay (float): Time (in dt) to delay after mid-circuit measurements (and delay).
         """
-        
+
         barrier = barrier or self._barriers
-        
+
         self.link_bits.append(
             ClassicalRegister((self.d - 1), "round_" + str(self.T) + "_link_bit")
         )
-        
+
         for log in ["0", "1"]:
 
             self.circuit[log].add_register(self.link_bits[-1])
-
+            
             # entangling gates
             if barrier:
                 self.circuit[log].barrier()
@@ -173,7 +173,7 @@ class RepetitionCode:
             for j in range(self.d - 1): 
                 if self._resets and not final:
                     self.circuit[log].reset(self.link_qubit[j])
-                
+                    
             # delay
             if barrier:
                 self.circuit[log].barrier()
