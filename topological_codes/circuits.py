@@ -37,6 +37,7 @@ class RepetitionCode:
             xbasis (bool): Whether to use the X basis to use for encoding (Z basis used by default).
             resets (bool): Whether to include a reset gate after mid-circuit measurements.
             delay (float): Time (in dt) to delay after mid-circuit measurements (and delay).
+            barrier (bool): Boolean denoting whether to include a barrier at the end.
 
 
         Additional information:
@@ -95,6 +96,7 @@ class RepetitionCode:
             barrier (bool): Boolean denoting whether to include a barrier at
                 the end.
         """
+        
         barrier = barrier or self._barriers
         for log in logs:
             if self._xbasis:
@@ -109,6 +111,7 @@ class RepetitionCode:
         Prepares logical bit states by applying an x to the circuit that will
         encode a 1.
         """
+        
         barrier = barrier or self._barriers
         for log in ["0", "1"]:
             if self._xbasis:
@@ -139,32 +142,46 @@ class RepetitionCode:
 
             self.circuit[log].add_register(self.link_bits[-1])
 
+            # entangling gates
+            if barrier:
+                self.circuit[log].barrier()
             if self._xbasis:
                 self.circuit[log].h(self.link_qubit)
-
             for j in range(self.d - 1):
                 if self._xbasis:
                     self.circuit[log].cx(self.link_qubit[j], self.code_qubit[j])
                 else:
                     self.circuit[log].cx(self.code_qubit[j], self.link_qubit[j])
-
             for j in range(self.d - 1):
                 if self._xbasis:
                     self.circuit[log].cx(self.link_qubit[j], self.code_qubit[j + 1])
                 else:
                     self.circuit[log].cx(self.code_qubit[j + 1], self.link_qubit[j])
-
             if self._xbasis:
                 self.circuit[log].h(self.link_qubit)
 
+            # measurement
+            if barrier:
+                self.circuit[log].barrier()
             for j in range(self.d - 1):
                 self.circuit[log].measure(
                     self.link_qubit[j], self.link_bits[self.T][j])
+                
+            # resets
+            if barrier:
+                self.circuit[log].barrier()
+            for j in range(self.d - 1): 
                 if self._resets and not final:
                     self.circuit[log].reset(self.link_qubit[j])
+                
+            # delay
+            if barrier:
+                self.circuit[log].barrier()
+            for j in range(self.d - 1): 
                 if delay > 0 and not final:
                     self.circuit[log].delay(delay, self.link_qubit[j])
 
+            # end
             if barrier:
                 self.circuit[log].barrier()
 
