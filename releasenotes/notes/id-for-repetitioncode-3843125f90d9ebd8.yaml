@@ -1,0 +1,10 @@
+---
+prelude: >
+    This release adds an optional argument to RepetitionCode, enabling to use
+    several repetition codes in the same circuit.
+features:
+  - |
+    When calling RepetitionCode, you can add an optional id argument, which
+    will be added to register names. This enables you to add several
+    repetition codes to the same circuit without getting register name
+    conflicts.
