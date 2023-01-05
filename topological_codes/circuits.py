@@ -38,6 +38,7 @@ class RepetitionCode:
             resets (bool): Whether to include a reset gate after mid-circuit measurements.
             delay (float): Time (in dt) to delay after mid-circuit measurements (and delay).
             barrier (bool): Boolean denoting whether to include a barrier at the end.
+            id (int): Repetition code id, in case you use several repetition codes in the same circuit
 
 
         Additional information:

@@ -314,6 +314,43 @@ class TestCodes(unittest.TestCase):
             self.assertTrue(test_passed, error)
         print('test_graph: ok')
 
+    def test_names(self):
+        """Test if register names are correctly altered when adding an id"""
+        test_passed = True
+
+        # Test when id is not specified
+        code = RepetitionCode(3,0)
+        code.syndrome_measurement()
+        for circ in code.get_circuit_list():
+            # Test link qubits
+            test_passed &= (circ.qregs[0]._name == "link_qubit_0")
+            error = ("Name of link qubit register should be link_qubit_0 but is " + circ.qregs[0]._name)
+            self.assertTrue(test_passed, error)
+            # Test code qubits
+            test_passed &= (circ.qregs[1]._name == "code_qubit_0")
+            error = ("Name of code qubit register should be code_qubit_0 but is " + circ.qregs[1]._name)
+            self.assertTrue(test_passed, error)
+            # Test link bits
+            test_passed &= (circ.cregs[0]._name == "round_0_link_bit_0")
+            error = ("Name of link bit register should be round_0_link_bit_0 but is " + circ.qregs[0]._name)
+            self.assertTrue(test_passed, error)
+
+        # Test when id is specified
+        code = RepetitionCode(3,0,id=1)
+        code.syndrome_measurement()
+        for circ in code.get_circuit_list():
+            # Test link qubits
+            test_passed &= (circ.qregs[0]._name == "link_qubit_1")
+            error = ("Name of link qubit register should be link_qubit_1 but is " + circ.qregs[0]._name)
+            self.assertTrue(test_passed, error)
+            # Test code qubits
+            test_passed &= (circ.qregs[1]._name == "code_qubit_1")
+            error = ("Name of code qubit register should be code_qubit_1 but is " + circ.qregs[1]._name)
+            self.assertTrue(test_passed, error)
+            # Test link bits
+            test_passed &= (circ.cregs[0]._name == "round_0_link_bit_1")
+            error = ("Name of link bit register should be round_0_link_bit_1 but is " + circ.qregs[0]._name)
+            self.assertTrue(test_passed, error)
 
 if __name__ == "__main__":
     unittest.main()
